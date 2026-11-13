@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Capture Viewer
+Comment=View a USB HDMI capture device
+Exec=capture-viewer
+Icon=capture-viewer
+Terminal=false
+Categories=AudioVideo;Video;

@@ -1,0 +1,101 @@
+name: Build and release
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: capture-viewer-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+jobs:
+  build:
+    name: ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            target: linux-x64
+          - os: ubuntu-24.04-arm
+            target: linux-arm64
+          - os: windows-2022
+            target: windows-x64
+          - os: macos-15
+            target: macos-arm64
+          - os: macos-15-intel
+            target: macos-x64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    env:
+      QT_QPA_PLATFORM: offscreen
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Linux runtime libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          source /etc/os-release
+          AUDIO=libasound2
+          if [[ "$VERSION_ID" == "24.04" ]]; then AUDIO=libasound2t64; fi
+          sudo apt-get install -y libegl1 libopengl0 libgl1 libxkbcommon0 libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 libxcb-xinerama0 libxcb-xkb1 libpulse0 "$AUDIO"
+      - name: Install dependencies
+        run: python -m pip install -e ".[dev]"
+      - name: Static checks
+        run: |
+          python -m ruff check src tests scripts
+          python -m ruff format --check src tests scripts
+      - name: Unit and GUI tests (no camera access)
+        run: python -m pytest -q
+      - name: Build native application
+        run: python scripts/build.py
+      - name: Verify bundled application
+        run: python scripts/smoke_bundle.py
+      - name: Create release archives and checksums
+        run: python scripts/package_release.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CaptureViewer-${{ matrix.target }}
+          path: release/*
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: preview-${{ matrix.target }}
+          path: build/bundle-preview.png
+          if-no-files-found: ignore
+
+  release:
+    name: Publish tagged release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: CaptureViewer-*
+          path: release
+          merge-multiple: true
+      - name: Publish verified archives
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          gh release create "$RELEASE_TAG" release/* --verify-tag --title "Capture Viewer $RELEASE_TAG" --generate-notes
