@@ -15,8 +15,7 @@ Python·별도 FFmpeg 설치 없이 실행합니다. UVC로 인식되는 캡처�
 | OS | CPU | 파일 | 실행 |
 |---|---|---|---|
 | Windows 11 | x64 | `CaptureViewer-버전-windows-x64.zip` | 압축 해제 후 `CaptureViewer.exe` |
-| macOS 15 이상 | Apple Silicon | `CaptureViewer-버전-macos-arm64.zip` | 압축 해제 후 앱을 응용 프로그램으로 이동 |
-| macOS 15 이상 | Intel | `CaptureViewer-버전-macos-x64.zip` | 압축 해제 후 앱을 응용 프로그램으로 이동 |
+| macOS 15 이상 | Apple Silicon / Intel | `CaptureViewer-버전-macos-universal2.zip` | 압축 해제 후 앱을 응용 프로그램으로 이동 |
 | Ubuntu 22.04 이상 | x64 | `CaptureViewer-버전-linux-x64.tar.gz` | `./CaptureViewer/CaptureViewer` |
 | Ubuntu 24.04 이상 / Jetson Thor | ARM64 | `CaptureViewer-버전-linux-arm64.tar.gz` | `./CaptureViewer/CaptureViewer` |
 
@@ -129,10 +128,10 @@ PyInstaller 디렉터리 배포로 매 실행 시 임시 압축 해제를 피합
 
 GitHub Actions:
 
-1. `main` push·PR·수동 실행: OS/CPU 5종에서 정적 검사 → 자동 시험 → 네이티브 빌드.
+1. `main` push·PR·수동 실행: Windows·Linux x64·Linux ARM64·macOS universal2에서 검사 → 시험 → 빌드.
 2. 생성한 실행 파일을 직접 실행해 데모 영상 렌더링·화면 저장·정상 종료 검사.
 3. 압축 파일은 Actions Artifacts에서 다운로드.
-4. 버전 태그 push 시 **5종 빌드 모두 성공 후** GitHub Release에 업로드.
+4. 버전 태그 push 시 **4종 빌드 모두 성공 후** GitHub Release에 업로드.
 
 ```bash
 git tag v0.1.0
@@ -142,6 +141,8 @@ git push origin v0.1.0
 태그는 `pyproject.toml`, `capture_viewer.__version__`, macOS 앱 버전과 일치시킵니다.
 자동 시험은 장치 분리·점유 오류·재시도 취소·이전 콜백·최신 프레임 유지·전체 화면·PNG 저장을 검사합니다.
 CI에는 물리 캡처보드가 없으므로 실제 장치 호환성과 전체 영상 지연은 각 OS에서 별도로 확인해야 합니다.
+macOS는 Intel 러너에서 universal2 앱을 빌드·실행하고, 모든 Mach-O 바이너리의
+Intel·Apple Silicon 슬라이스를 검사합니다. Apple Silicon 실기에서의 실행은 별도 확인 대상입니다.
 
 ## 코드 구성
 

@@ -16,6 +16,11 @@ def main():
     machine = platform.machine().lower()
     architecture = "arm64" if machine in ("arm64", "aarch64") else "x64"
     system = {"win32": "windows", "darwin": "macos"}.get(sys.platform, "linux")
+    if system == "macos":
+        executable = ROOT / "dist/Capture Viewer.app/Contents/MacOS/CaptureViewer"
+        slices = subprocess.check_output(["lipo", "-archs", str(executable)], text=True).split()
+        if "arm64" in slices and "x86_64" in slices:
+            architecture = "universal2"
     output = ROOT / "release"
     output.mkdir(exist_ok=True)
     name = f"CaptureViewer-{version}-{system}-{architecture}"

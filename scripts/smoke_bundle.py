@@ -30,6 +30,24 @@ def main():
         colors = [rgb.getpixel((x, 220)) for x in [100, 250, 400, 550, 700]]
         assert len(set(colors)) >= 4, "The bundled preview did not render the test signal"
     print("Packaged GUI: rendered test signal, saved screenshot, exited cleanly")
+    if sys.platform == "darwin" and os.environ.get("CAPTURE_MAC_UNIVERSAL") == "1":
+        seen = set()
+        for path in (ROOT / "dist/Capture Viewer.app").rglob("*"):
+            if not path.is_file() or path.resolve() in seen:
+                continue
+            seen.add(path.resolve())
+            with path.open("rb") as source:
+                magic = source.read(4)
+            if magic not in [
+                b"\xca\xfe\xba\xbe",
+                b"\xbe\xba\xfe\xca",
+                b"\xcf\xfa\xed\xfe",
+                b"\xfe\xed\xfa\xcf",
+            ]:
+                continue
+            slices = subprocess.check_output(["lipo", "-archs", str(path)], text=True).split()
+            assert {"arm64", "x86_64"} <= set(slices), f"Missing universal2 slice: {path}"
+        print("Universal2: all Mach-O binaries include both Intel and Apple Silicon slices")
 
 
 if __name__ == "__main__":

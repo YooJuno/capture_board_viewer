@@ -1,6 +1,7 @@
 # Run through scripts/build.py so platform icons and version metadata exist.
 import sys
 import tomllib
+import os
 from pathlib import Path
 
 from PyInstaller.utils.hooks import copy_metadata
@@ -19,13 +20,15 @@ analysis = Analysis(
     pathex=[str(root / 'src')],
     datas=datas,
     hiddenimports=['PySide6.QtSvg'],
-    excludes=['PySide6.QtWebEngineCore', 'PySide6.QtWebEngineWidgets', 'PySide6.QtQml'],
+    excludes=['PySide6.QtWebEngineCore', 'PySide6.QtWebEngineWidgets', 'PySide6.QtQml', 'PIL'],
 )
 pyz = PYZ(analysis.pure)
 icon = root / 'build/icons' / ('icon.ico' if sys.platform == 'win32' else 'icon.icns')
 exe = EXE(pyz, analysis.scripts, [], exclude_binaries=True, name='CaptureViewer',
           debug=False, bootloader_ignore_signals=False, strip=False, upx=False,
           console=False, icon=str(icon) if sys.platform != 'linux' else None,
+          target_arch='universal2' if sys.platform == 'darwin' and
+              os.environ.get('CAPTURE_MAC_UNIVERSAL') == '1' else None,
           entitlements_file=str(root / 'packaging/macos/entitlements.plist')
           if sys.platform == 'darwin' else None)
 collection = COLLECT(exe, analysis.binaries, analysis.datas, strip=False, upx=False,

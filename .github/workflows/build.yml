@@ -27,10 +27,8 @@ jobs:
             target: linux-arm64
           - os: windows-2022
             target: windows-x64
-          - os: macos-26
-            target: macos-arm64
           - os: macos-15-intel
-            target: macos-x64
+            target: macos-universal2
     runs-on: ${{ matrix.os }}
     timeout-minutes: 25
     env:
@@ -51,6 +49,9 @@ jobs:
           AUDIO=libasound2
           if [[ "$VERSION_ID" == "24.04" ]]; then AUDIO=libasound2t64; fi
           sudo apt-get install -y libegl1 libopengl0 libgl1 libxkbcommon0 libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 libxcb-xinerama0 libxcb-xkb1 libpulse0 "$AUDIO"
+      - name: Universal2 CPython for macOS
+        if: runner.os == 'macOS'
+        run: bash scripts/setup_macos_ci.sh
       - name: Install dependencies
         run: python -m pip install -e ".[dev]"
       - name: Static checks
@@ -60,8 +61,12 @@ jobs:
       - name: Unit and GUI tests (no camera access)
         run: python -m pytest -q
       - name: Build native application
+        env:
+          CAPTURE_MAC_UNIVERSAL: ${{ runner.os == 'macOS' && '1' || '0' }}
         run: python scripts/build.py
       - name: Verify bundled application
+        env:
+          CAPTURE_MAC_UNIVERSAL: ${{ runner.os == 'macOS' && '1' || '0' }}
         run: python scripts/smoke_bundle.py
       - name: Create release archives and checksums
         run: python scripts/package_release.py
